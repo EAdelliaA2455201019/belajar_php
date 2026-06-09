@@ -1,9 +1,15 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+include 'config.php';
 
-include 'koneksi.php';
-// memanggil file koneksi database
+try {
+    // ambil data
+    $stmt = $pdo = new PDO($dsn, $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo 'Connected successfully<br>';
+}
+catch (PDOException $e) {
+    echo 'Connection failed: ' . $e->getMessage();
+}
 
 // mengambil semua data produk dari database
 $query = "SELECT * FROM products ORDER BY id DESC";
@@ -464,12 +470,12 @@ $products = $stmt->fetchAll();
                             </div>
                         <?php } ?>
 
-                        <form action="proses_tambah.php" method="POST">
+                        <form action="process_add.php" method="POST">
                             <div class="mb-4">
                                 <label class="form-label">Nama Produk</label>
                                 <div class="custom-input-group">
                                     <div class="icon-wrapper">
-                                        <i class="bi bi-box-seam-fill"></i>
+                                        <i class="bi bi-box-fill"></i>
                                     </div>
                                     <input type="text" class="form-control" id="inputProductName" name="name" placeholder="Misal: iPhone 15 Pro Max" required>
                                 </div>
