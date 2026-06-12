@@ -1,7 +1,7 @@
 <?php
 // konfigurasi koneksi database
 $host = 'localhost';
-$db = 'belajar_php';
+$db   = 'belajar_php';
 $user = 'root';
 $pass = '';
 

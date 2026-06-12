@@ -1,51 +1,40 @@
 <?php
-// memanggil config
-include 'config.php';
+require_once 'config.php';
 
-// cek request POST
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $productName = $_POST['product_name'] ?? '';
+    $productPrice = $_POST['product_price'] ?? '';
 
-    // ambil data form
-    $productName  = $_POST['name'] ?? '';
-    $productPrice = $_POST['price'] ?? '';
-
-    // validasi input kosong
     if (empty($productName) || empty($productPrice)) {
-        echo "<script>
-                alert('Please fill in all fields');
-                window.location.href='add.php';
-              </script>";
-        exit();
+        echo "<script>alert('Please fill in all fields'); 
+        window.location.href='add.php';</script>";
+        exit;
     }
 
     try {
-        // koneksi PDO dari config
         $pdo = new PDO($dsn, $user, $pass);
+        $pdo->setAttribute(
+            PDO::ATTR_ERRMODE,
+            PDO::ERRMODE_EXCEPTION
+        );
 
-        // set error mode
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        // query insert
-        $query = "INSERT INTO products (name, price) VALUES (:name, :price)";
-        $stmt = $pdo->prepare($query);
-
-        // eksekusi
+        // Insert the product
+        $stmt = $pdo->prepare(
+            "INSERT INTO products (name, price) VALUES (:name, :price)"
+        );
         $stmt->execute([
-            ':name'  => $productName,
+            ':name' => $productName,
             ':price' => $productPrice
         ]);
 
-        echo "<script>
-                alert('Product added successfully!');
-                window.location.href='index.php';
-              </script>";
-        exit();
-
+        echo "<script>alert('Product added successfully!'); 
+        window.location.href='index.php';</script>";
     } catch (PDOException $e) {
-        echo "<script>
-                alert('Error: " . $e->getMessage() . "');
-                window.location.href='add.php';
-              </script>";
-        exit();
+        echo "<script>alert('Error: " .
+            addslashes($e->getMessage()) . "'); 
+           window.location.href='add.php';</script>";
     }
+} else {
+    header('Location: add.php');
+    exit;
 }
