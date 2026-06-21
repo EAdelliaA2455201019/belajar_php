@@ -1,38 +1,41 @@
 <?php
-// memanggil konfigurasi koneksi database
+// =============================================================
+// file: delete.php
+// fungsi: memproses penghapusan data produk berdasarkan id
+// =============================================================
+
+// hubungkan konfigurasi database
 include 'config.php';
 
-// cek apakah id dikirim via url (GET) dan nilainya angka
+// cek parameter id dari url (metode get)
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    // jika tidak valid, langsung kembalikan ke halaman utama
+    // jika id tidak ada atau tidak valid, kembalikan ke halaman utama
     header('Location: index.php');
     exit();
 }
 
-// ambil id dari url dan konversi ke integer agar aman dari serangan sql injection
+// ubah id menjadi tipe data integer demi keamanan data
 $id = (int) $_GET['id'];
 
 try {
-    // membuat koneksi pdo ke database
+    // lakukan koneksi ke database dengan pdo
     $pdo = new PDO($dsn, $user, $pass);
-
-    // set mode error agar exception muncul jika ada masalah query
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // query delete menggunakan prepared statement dengan parameter id
+    // query delete menggunakan prepared statement
     $query = "DELETE FROM products WHERE id = :id";
     $stmt  = $pdo->prepare($query);
 
-    // eksekusi penghapusan dengan id yang sudah divalidasi
+    // jalankan penghapusan data produk
     $stmt->execute([':id' => $id]);
 
-    // setelah berhasil hapus, redirect ke index.php
+    // arahkan kembali ke index.php dengan status sukses bahasa inggris
     header('Location: index.php?success=deleted');
     exit();
 
 } catch (PDOException $e) {
-    // jika gagal, redirect ke index dengan pesan error di url
-    $errMsg = urlencode('Gagal menghapus: ' . $e->getMessage());
+    // jika gagal, tangkap pesan error database lalu arahkan kembali
+    $errMsg = urlencode('Failed to delete: ' . $e->getMessage());
     header("Location: index.php?error=$errMsg");
     exit();
 }

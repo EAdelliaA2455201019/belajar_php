@@ -1,119 +1,194 @@
 <?php
-// memanggil koneksi dan ambil data produk untuk ditampilkan di tabel
-include 'config.php';
-$products = [];
-try {
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $query = "SELECT * FROM products ORDER BY id DESC";
-    $stmt = $pdo->query($query);
-    $products = $stmt->fetchAll();
-} catch (PDOException $e) {
-    // abaikan jika gagal koneksi
-}
-?>
+// =============================================================
+// file: add.php
+// fungsi: menampilkan form input untuk menambah data produk baru
+// =============================================================
 
+// ambil pesan error jika dikirim dari process_add.php via url
+$error = $_GET['error'] ?? '';
+?>
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Add New</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <!-- judul halaman menggunakan bahasa inggris -->
+    <title>Add Product - GudangKu</title>
+    <!-- load css bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- load icon bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- load google font -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --dark: #0f172a;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        /* kartu form modern */
+        .form-card {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 520px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .form-header {
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            color: #ffffff;
+            padding: 2rem;
+        }
+
+        .form-body {
+            padding: 2.5rem 2rem;
+        }
+
+        .form-label {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .custom-input {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .custom-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            outline: none;
+        }
+
+        .btn-submit {
+            background-color: var(--primary);
+            color: #ffffff;
+            font-weight: 700;
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+
+        .btn-submit:hover {
+            background-color: #3730a3;
+            transform: translateY(-2px);
+        }
+
+        .btn-cancel {
+            background-color: #f1f5f9;
+            color: #64748b;
+            font-weight: 700;
+            padding: 0.8rem;
+            border-radius: 12px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel:hover {
+            background-color: #e2e8f0;
+            color: #334155;
+        }
+    </style>
 </head>
-
 <body>
-    <div class="container-xxl">
-        <nav class="navbar bg-primary navbar-expand-lg text-white" data-bs-theme="light">
-            <div class="container-fluid">
-                <a class="navbar-brand text-white" href="#">Navbar</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link active text-white" aria-current="page" href="#">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="#">Link</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Dropdown
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#">Action</a></li>
-                                <li><a class="dropdown-item" href="#">Another action</a></li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li><a class="dropdown-item" href="#">Something else here</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link disabled text-white" aria-disabled="true">Disabled</a>
-                        </li>
-                    </ul>
-                    <form class="d-flex" role="search">
-                        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
-                        <button class="btn btn-outline-success" type="submit">Search</button>
-                    </form>
-                </div>
+
+<div class="form-card">
+    <!-- bagian header kartu form -->
+    <div class="form-header">
+        <div class="d-flex align-items-center gap-3">
+            <div style="background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px;">
+                <i class="bi bi-box-seam fs-4"></i>
             </div>
-        </nav>
-
-        <!-- form input -->
-        <div class="container mb-5">
-            <h3 class="mt-4 mb-3">Add Product</h3>
-            <form method="POST" action="process_add.php">
-                <div class="mb-3">
-                    <label for="inputProuctName" class="form-label">Product Name</label>
-                    <input type="text" class="form-control" id="inputProuctName" name="product_name" aria-describedby="productNameHelp">
-                    <div id="productNameHelp" class="form-text">Enter the product name</div>
-                </div>
-                <div class="mb-3">
-                    <label for="inputProductPrice" class="form-label">Product Price</label>
-                    <input type="number" class="form-control" id="inputProductPrice" name="product_price" aria-describedby="productPriceHelp">
-                    <div id="productPriceHelp" class="form-text">Enter the product price</div>
-                </div>
-                <button type="submit" class="btn btn-primary">Submit</button>
-            </form>
+            <div>
+                <h4 class="fw-800 m-0">Add New Product</h4>
+                <small class="opacity-75">Create a brand new item in your inventory database</small>
+            </div>
         </div>
-
-        <!-- tabel daftar produk ditambahkan di sini -->
-        <div class="container">
-            <h3 class="mb-3">Products List</h3>
-            <table class="table table-striped table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Price</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($products as $product): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($product['id'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($product['name'] ?? ''); ?></td>
-                            <td><?php echo htmlspecialchars($product['price'] ?? ''); ?></td>
-                            <td>
-                                <!-- tombol edit dan delete -->
-                                <a href="edit.php?id=<?php echo htmlspecialchars($product['id'] ?? ''); ?>" class="btn btn-sm btn-warning">Edit</a>
-                                <a href="delete.php?id=<?php echo htmlspecialchars($product['id'] ?? ''); ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this product?');">Delete</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-</body>
+    <!-- bagian isi form -->
+    <div class="form-body">
+        
+        <!-- tampilkan pesan error jika ada kiriman error dari URL -->
+        <?php if ($error): ?>
+            <div class="alert alert-danger mb-4" style="border-radius: 10px;">
+                <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
 
+        <!-- form diarahkan ke process_add.php dengan metode POST sesuai request -->
+        <form method="POST" action="process_add.php">
+            
+            <!-- field sku -->
+            <div class="mb-3">
+                <label class="form-label">SKU (Stock Keeping Unit) *</label>
+                <input type="text" name="sku" class="form-control custom-input" placeholder="e.g. SKU-10029" required>
+            </div>
+
+            <!-- field nama produk -->
+            <div class="mb-3">
+                <label class="form-label">Product Name *</label>
+                <input type="text" name="product_name" class="form-control custom-input" placeholder="e.g. Wireless Mouse" required>
+            </div>
+
+            <!-- field harga produk -->
+            <div class="mb-3">
+                <label class="form-label">Price (Rupiah) *</label>
+                <input type="number" name="price" class="form-control custom-input" min="0" step="0.01" placeholder="e.g. 150000" required>
+            </div>
+
+            <!-- field stok awal -->
+            <div class="mb-4">
+                <label class="form-label">Initial Stock</label>
+                <input type="number" name="stock" class="form-control custom-input" min="0" placeholder="e.g. 100" value="0">
+            </div>
+
+            <!-- baris tombol simpan & batal -->
+            <div class="row g-3">
+                <div class="col-6">
+                    <a href="index.php" class="btn-cancel w-100">Cancel</a>
+                </div>
+                <div class="col-6">
+                    <button type="submit" class="btn-submit w-100">Save Product</button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>

@@ -1,860 +1,522 @@
 <?php
+// =============================================================
+// file: index.php
+// fungsi: halaman utama menampilkan dasbor & list produk
+// =============================================================
+
+// hubungkan ke database
 include 'config.php';
 
-// inisialisasi awal agar tidak error jika koneksi gagal
+// buat array kosong untuk menampung data produk
 $products = [];
 $dbError  = '';
 
 try {
-    // ambil data
+    // buat koneksi pdo ke database
     $pdo = new PDO($dsn, $user, $pass);
+    // atur pdo agar melemparkan error exception jika terjadi masalah
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $query = "SELECT * FROM products ORDER BY id DESC";
-    $stmt = $pdo->query($query);
-    $products = $stmt->fetchAll();
-}
-catch (PDOException $e) {
+
+    // kueri ambil semua data produk dari yang paling baru
+    $stmt = $pdo->query("SELECT * FROM products ORDER BY id DESC");
+    // masukkan data ke variabel products
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    // jika ada error, tangkap pesannya
     $dbError = $e->getMessage();
 }
 
-// menentukan halaman aktif dari url (default ke dashboard jika kosong)
-$page = $_GET['page'] ?? 'dashboard';
+// hitung total statistik produk dan nilai aset
+$totalProducts = count($products);
+$totalAssetValue = 0;
+$lowStockCount = 0;
 
+foreach ($products as $p) {
+    // hitung total nilai berdasarkan harga kali stok produk
+    $totalAssetValue += $p['price'] * $p['stock'];
+    // tandai produk yang stoknya kurang dari 10
+    if ($p['stock'] < 10) {
+        $lowStockCount++;
+    }
+}
 ?>
 <!doctype html>
-<html lang="id">
-
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GudangKu App</title>
-    <!-- bootstrap css -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-    <!-- bootstrap icons -->
+    <!-- judul halaman menggunakan bahasa inggris -->
+    <title>Product Dashboard - GudangKu</title>
+    <!-- load bootstrap 5 css -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- load icon bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- google fonts -->
+    <!-- load font modern dari google fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- custom css -->
     <style>
+        /* variabel warna tema sederhana maksimal 3 warna dominan */
         :root {
-            --primary: #4f46e5;      /* Indigo 600 */
-            --primary-hover: #4338ca; /* Indigo 700 */
-            --secondary: #ec4899;    /* Pink 500 */
-            --dark: #0f172a;         /* Slate 900 */
-            --light-bg: #f8fafc;     /* Slate 50 */
-            --card-bg: rgba(255, 255, 255, 0.85);
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --dark: #0f172a;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
         }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--light-bg);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
-            background-attachment: fixed;
-            color: #334155;
-            overflow-x: hidden;
+            background-color: var(--bg);
+            color: var(--text-main);
         }
 
-        /* Navbar Floating Pill Style */
-        .navbar-wrapper {
-            padding: 20px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1020;
+        /* sidebar modern minimalis */
+        .sidebar {
+            background-color: var(--dark);
+            min-height: 100vh;
+            color: #ffffff;
+            padding: 2rem 1.5rem;
         }
 
-        .navbar {
-            background: rgba(255, 255, 255, 0.75) !important;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
-            padding: 12px 24px;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            transition: all 0.3s ease;
-        }
-
-        .navbar-brand {
+        .sidebar-brand {
+            font-size: 1.5rem;
             font-weight: 800;
-            font-size: 1.4rem;
-            color: var(--dark) !important;
             letter-spacing: -0.5px;
-        }
-
-        .nav-link {
-            font-weight: 600;
-            color: #64748b !important;
-            transition: all 0.3s ease;
-            padding: 0.6rem 1.2rem !important;
-            border-radius: 14px;
-            margin: 0 4px;
-        }
-
-        .nav-link:hover,
-        .nav-link.active {
-            color: var(--primary) !important;
-            background-color: rgba(79, 70, 229, 0.1);
-        }
-
-        /* styling untuk hero section */
-        .hero-section {
-            background: linear-gradient(135deg, var(--primary) 0%, #312e81 100%);
-            color: white;
-            padding: 50px 0;
-            border-radius: 28px;
-            margin-bottom: 40px;
-            box-shadow: 0 20px 40px rgba(79, 70, 229, 0.25);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
-            transform: rotate(30deg);
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-content h1 {
-            letter-spacing: -1.5px;
-            font-weight: 800;
-        }
-
-        .hero-image-wrapper {
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-image {
-            border-radius: 24px;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-            border: 4px solid rgba(255, 255, 255, 0.15);
-            object-fit: cover;
-            width: 100%;
-            height: auto;
-            max-width: 320px;
-        }
-
-        /* styling untuk card */
-        .card {
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            border-radius: 28px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
-            background: var(--card-bg);
-            backdrop-filter: blur(10px);
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(79, 70, 229, 0.08);
-            border-color: rgba(255, 255, 255, 1);
-        }
-
-        .card-header {
-            background: transparent;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding: 24px 28px;
-            font-weight: 800;
-        }
-
-        /* styling untuk form control */
-        .form-label {
-            font-weight: 700;
-            color: #334155;
-            font-size: 0.9rem;
-            margin-bottom: 0.6rem;
-        }
-
-        .custom-input-group {
-            border-radius: 16px;
-            border: 2px solid #e2e8f0;
-            background-color: #ffffff;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
+            gap: 10px;
+            margin-bottom: 3rem;
         }
 
-        .custom-input-group:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 4px 20px rgba(79, 70, 229, 0.15);
-            transform: translateY(-2px);
+        .sidebar-brand i {
+            color: var(--primary);
         }
 
-        .custom-input-group .icon-wrapper {
-            padding: 0 16px;
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-nav-item a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.8rem 1rem;
             color: #94a3b8;
-            transition: color 0.3s ease;
-            font-size: 1.2rem;
-        }
-
-        .custom-input-group:focus-within .icon-wrapper {
-            color: var(--primary);
-        }
-
-        .custom-input-group .form-control {
-            border: none;
-            background: transparent;
-            box-shadow: none !important;
-            padding: 16px 16px 16px 0;
+            text-decoration: none;
             font-weight: 600;
-            color: #1e293b;
-        }
-        
-        .custom-input-group .form-control::placeholder {
-            color: #cbd5e1;
-            font-weight: 500;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
         }
 
-        /* styling untuk button primary */
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-            border: none;
-            padding: 14px 28px;
-            border-radius: 16px;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
-            letter-spacing: 0.5px;
+        .sidebar-nav-item a:hover,
+        .sidebar-nav-item a.active {
+            background-color: rgba(79, 70, 229, 0.15);
+            color: #ffffff;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 24px rgba(79, 70, 229, 0.4);
-            background: linear-gradient(135deg, var(--primary-hover) 0%, #3730a3 100%);
-        }
-
-        .btn-outline-primary {
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            font-weight: 700;
-        }
-        
-        .btn-outline-primary:hover {
+        .sidebar-nav-item a.active {
             background-color: var(--primary);
-            color: white;
         }
 
-        .bg-primary {
-            background-color: var(--primary) !important;
+        /* area konten utama */
+        .content-area {
+            padding: 2.5rem 3rem;
         }
 
-        .text-primary {
-            color: var(--primary) !important;
+        /* kartu statistik */
+        .stat-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        /* styling untuk tabel */
-        .table {
-            margin-bottom: 0;
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
         }
 
-        .table thead th {
-            background-color: transparent;
-            color: #64748b;
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background-color: rgba(79, 70, 229, 0.08);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        /* kartu pembungkus tabel */
+        .table-container-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* tabel kustom */
+        .custom-table {
+            vertical-align: middle;
+        }
+
+        .custom-table thead th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
             font-weight: 700;
             text-transform: uppercase;
             font-size: 0.75rem;
-            letter-spacing: 1px;
-            border-bottom: 2px solid #e2e8f0;
-            padding: 16px;
+            letter-spacing: 0.5px;
+            padding: 1rem;
+            border-bottom: 2px solid var(--border);
         }
 
-        .table tbody td {
-            padding: 16px;
-            vertical-align: middle;
-            border-bottom: 1px solid rgba(0,0,0,0.03);
-            color: #334155;
-            font-weight: 500;
+        .custom-table tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .table tbody tr {
-            transition: background-color 0.2s ease;
+        /* badge kustom */
+        .sku-badge {
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            font-family: monospace;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
         }
 
-        .table tbody tr:hover {
-            background-color: rgba(79, 70, 229, 0.03);
-        }
-
-        /* animasi pulse untuk button */
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
-            70% { box-shadow: 0 0 0 14px rgba(79, 70, 229, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
-        }
-
-        .btn-pulse:hover {
-            animation: pulse 1.5s infinite;
-        }
-
-        /* styling untuk badge harga */
         .price-badge {
-            background: rgba(79, 70, 229, 0.1);
             color: var(--primary);
-            padding: 6px 16px;
-            border-radius: 30px;
-            font-weight: 800;
-            font-size: 0.95rem;
-            display: inline-block;
-            border: 1px solid rgba(79, 70, 229, 0.2);
+            font-weight: 700;
         }
 
-        /* Action buttons */
-        .btn-action {
-            width: 42px;
-            height: 42px;
-            padding: 0;
+        .stock-badge {
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* tombol aksi */
+        .action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
-            margin: 0 4px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-size: 1.2rem;
-            cursor: pointer;
+            color: #ffffff;
+            transition: all 0.2s ease;
             text-decoration: none;
         }
 
-        .btn-edit {
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.2);
+        .action-btn:hover {
+            transform: translateY(-2px);
+            color: #ffffff;
         }
 
-        .btn-edit:hover {
-            background: #f59e0b;
-            color: white;
-            transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+        .btn-edit { background-color: #f59e0b; }
+        .btn-edit:hover { background-color: #d97706; }
+
+        .btn-delete { background-color: #ef4444; }
+        .btn-delete:hover { background-color: #dc2626; }
+
+        .btn-stock { background-color: #10b981; }
+        .btn-stock:hover { background-color: #059669; }
+
+        /* alert melayang */
+        .floating-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease;
         }
 
-        .btn-delete {
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .btn-delete:hover {
-            background: #ef4444;
-            color: white;
-            transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
-        }
-
-        /* alert styling */
-        .alert {
-            border-radius: 20px;
-            border: none;
-            padding: 16px 24px;
-        }
-
-        /* icon wrapper styling */
-        .icon-wrapper-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 14px;
-            box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
-        }
-
-        .icon-wrapper-info {
-            background: rgba(15, 23, 42, 0.05);
-            color: var(--dark);
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 14px;
-        }
-
-        /* animasi */
-        .fade-in {
-            animation: fadeIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-            opacity: 0;
-        }
-
-        .floating {
-            animation: floating 5s ease-in-out infinite;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes floating {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-            100% { transform: translateY(0px); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
+<body>
 
-<body class="d-flex flex-column min-vh-100">
-    <!-- navbar -->
-    <div class="navbar-wrapper container">
-        <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid px-2">
-                <a class="navbar-brand d-flex align-items-center" href="#">
-                    <div class="bg-dark rounded-3 p-2 me-3 shadow-sm text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;">
-                        <i class="bi bi-boxes fs-5"></i>
-                    </div>
-                    GudangKu
+<!-- layout sistem grid bootstrap: sidebar col-md-3, main content col-md-9 -->
+<div class="container-fluid">
+    <div class="row">
+        
+        <!-- kolom sidebar -->
+        <div class="col-12 col-md-3 sidebar">
+            <div class="sidebar-brand">
+                <i class="bi bi-boxes"></i>
+                <span>GudangKu</span>
+            </div>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="index.php" class="active">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="add.php">
+                        <i class="bi bi-plus-circle-fill"></i>
+                        <span>Add Product</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- kolom konten utama -->
+        <div class="col-12 col-md-9 content-area">
+            
+            <!-- header utama -->
+            <div class="d-flex justify-content-between align-items-center mb-5">
+                <div>
+                    <h1 class="fw-800 m-0">Inventory Dashboard</h1>
+                    <p class="text-muted m-0">Manage your product stocks and track business performance</p>
+                </div>
+                <a href="add.php" class="btn btn-primary px-4 py-2" style="border-radius: 12px; font-weight: 600;">
+                    <i class="bi bi-plus-lg me-2"></i>Add Product
                 </a>
-                <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <i class="bi bi-list fs-2 text-dark"></i>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $page === 'dashboard' ? 'active' : ''; ?>" href="?page=dashboard">
-                                <i class="bi bi-grid-fill me-2 opacity-75"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $page === 'produk' ? 'active' : ''; ?>" href="?page=produk">
-                                <i class="bi bi-box-seam-fill me-2 opacity-75"></i> Produk
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $page === 'laporan' ? 'active' : ''; ?>" href="?page=laporan">
-                                <i class="bi bi-pie-chart-fill me-2 opacity-75"></i> Laporan
-                            </a>
-                        </li>
-                    </ul>
-                    <div class="d-flex align-items-center mt-3 mt-lg-0">
-                        <div class="position-relative me-4" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-                            <i class="bi bi-bell-fill fs-5 text-secondary"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle shadow-sm"></span>
-                        </div>
-                        <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" style="color: inherit;">
-                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=0f172a&color=fff&bold=true&rounded=4" alt="Profile" class="shadow-sm rounded-3" width="44" height="44">
-                                <div class="ms-3 d-none d-xl-block">
-                                    <span class="d-block text-dark fw-bold" style="font-size: 0.9rem;">Admin User</span>
-                                    <span class="d-block text-muted" style="font-size: 0.75rem;">Administrator</span>
-                                </div>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-2 rounded-4">
-                                <li><a class="dropdown-item py-2 px-3 rounded-3 fw-medium <?php echo $page === 'profil' ? 'active bg-primary text-white' : ''; ?>" href="?page=profil"><i class="bi bi-person-circle me-2 <?php echo $page === 'profil' ? '' : 'text-primary opacity-75'; ?>"></i>Profil Saya</a></li>
-                                <li><a class="dropdown-item py-2 px-3 rounded-3 fw-medium <?php echo $page === 'pengaturan' ? 'active bg-primary text-white' : ''; ?>" href="?page=pengaturan"><i class="bi bi-gear-fill me-2 <?php echo $page === 'pengaturan' ? '' : 'text-secondary opacity-75'; ?>"></i>Pengaturan</a></li>
-                                <li>
-                                    <hr class="dropdown-divider my-2">
-                                </li>
-                                <li><a class="dropdown-item py-2 px-3 rounded-3 fw-medium text-danger bg-danger-hover" href="?page=keluar"><i class="bi bi-box-arrow-right me-2 opacity-75"></i>Keluar</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </nav>
-    </div>
-
-    <div class="container flex-grow-1">
-
-        <?php if ($page === 'dashboard'): ?>
-        <!-- ================= HALAMAN DASHBOARD ================= -->
-        <!-- Hero Section with Clean Dark Aesthetic -->
-        <div class="hero-section px-4 px-md-5 fade-in" style="animation-delay: 0.1s;">
-            <div class="row align-items-center hero-content">
-                <div class="col-lg-7 text-center text-lg-start">
-                    <h1 class="display-4 fw-bolder mb-3 text-white">Kelola Inventaris<br>Lebih Efisien.</h1>
-                    <p class="lead mb-4 text-white-50 mx-auto mx-lg-0" style="max-width: 550px; font-weight: 400; font-size: 1.1rem;">Platform modern yang dirancang khusus untuk memaksimalkan produktivitas Anda. Pantau stok barang dan perbarui data dalam hitungan detik.</p>
-                </div>
-                <div class="col-lg-5 d-none d-lg-block text-end floating" style="animation-delay: 0.5s;">
-                    <div id="heroCarousel" class="carousel slide carousel-fade shadow-lg" data-bs-ride="carousel" style="border-radius: 24px; border: 4px solid rgba(255, 255, 255, 0.15); overflow: hidden; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);">
-                        <div class="carousel-inner">
-                            <div class="carousel-item active" data-bs-interval="3000">
-                                <img src="https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=500&q=80" class="d-block w-100" alt="Inventory Management" style="height: 320px; object-fit: cover;">
-                            </div>
-                            <div class="carousel-item" data-bs-interval="3000">
-                                <img src="https://images.unsplash.com/photo-1586528116311-ad8ed7c508b0?auto=format&fit=crop&w=500&q=80" class="d-block w-100" alt="Warehouse Operations" style="height: 320px; object-fit: cover;">
-                            </div>
-                            <div class="carousel-item" data-bs-interval="3000">
-                                <img src="https://images.unsplash.com/photo-1580674285054-bed31e145f59?auto=format&fit=crop&w=500&q=80" class="d-block w-100" alt="Logistics and Shipping" style="height: 320px; object-fit: cover;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- main content -->
-        <div class="row g-4 g-lg-5 pb-5">
-
-            <!-- form tambah produk -->
-            <div class="col-lg-4">
-                <div class="card fade-in h-100" style="animation-delay: 0.2s;">
-                    <div class="card-header border-0 pt-4 pb-0 bg-transparent">
-                        <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                            <div class="icon-wrapper-primary me-3">
-                                <i class="bi bi-plus-lg fs-5"></i>
-                            </div>
-                            Tambah Produk
-                        </h5>
-                    </div>
-                    <div class="card-body p-4 pt-4">
-
-                        <?php if (isset($_GET['error'])) {
-                            $errorMsg = htmlspecialchars($_GET['error']); ?>
-                            <div class="alert alert-danger d-flex align-items-center rounded-3 border-0 bg-danger bg-opacity-10 text-danger mb-4" role="alert">
-                                <i class="bi bi-exclamation-octagon-fill me-3 fs-5"></i>
-                                <div class="fw-medium"><?php echo $errorMsg; ?></div>
-                            </div>
-                        <?php } ?>
-
-                        <?php if (isset($_GET['success'])) { ?>
-                            <div id="success-alert" class="alert alert-success d-flex align-items-center rounded-3 border-0 bg-success bg-opacity-10 text-success mb-4" role="alert">
-                                <i class="bi bi-check-circle-fill me-3 fs-5"></i>
-                                <div class="fw-medium">Aksi berhasil dilakukan!</div>
-                            </div>
-                        <?php } ?>
-
-                        <form action="process_add.php" method="POST">
-                            <div class="mb-4">
-                                <label class="form-label">Nama Produk</label>
-                                <div class="custom-input-group">
-                                    <div class="icon-wrapper">
-                                        <i class="bi bi-box-fill"></i>
-                                    </div>
-                                    <!-- Perbaikan name input disesuaikan dengan form asli -->
-                                    <input type="text" class="form-control" id="inputProductName" name="name" placeholder="Misal: iPhone 15 Pro Max" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label">Harga Produk (Rp)</label>
-                                <div class="custom-input-group">
-                                    <div class="icon-wrapper">
-                                        <i class="bi bi-tags-fill"></i>
-                                    </div>
-                                    <input type="number" class="form-control" id="inputProductPrice" name="price" placeholder="Contoh: 15000000" min="0" required>
-                                </div>
-                            </div>
-
-                            <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary btn-pulse btn-lg d-flex align-items-center justify-content-center py-2">
-                                    <i class="bi bi-cloud-arrow-up-fill me-2 fs-5"></i> Simpan ke Database
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </div>
 
-            <!-- daftar produk -->
-            <div class="col-lg-8">
-                <div class="card fade-in h-100" style="animation-delay: 0.3s;">
-                    <div class="card-header border-0 pt-4 pb-3 bg-transparent d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                            <div class="icon-wrapper-info me-3">
-                                <i class="bi bi-grid-1x2-fill fs-5"></i>
-                            </div>
-                            Inventaris Produk
-                        </h5>
-                        <span class="badge bg-dark text-white rounded-pill px-3 py-2 fw-semibold shadow-sm">
-                            <?php echo count($products); ?> Item Tersedia
-                        </span>
-                    </div>
-                    <div class="card-body p-0">
-                        <?php if (count($products) > 0) { ?>
-                            <div class="table-responsive">
-                                <table class="table align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-center" width="5%">#</th>
-                                            <th width="50%">Detail Produk</th>
-                                            <th width="25%">Harga Jual</th>
-                                            <th class="text-center" width="20%">Kelola</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $no = 1;
-                                        foreach ($products as $product) {
-                                        ?>
-                                            <tr>
-                                                <td class="text-center text-muted fw-bold"><?php echo $no++; ?></td>
-                                                <td>
-                                                    <h6 class="mb-1 fw-bold text-dark fs-6"><?php echo htmlspecialchars($product['name']); ?></h6>
-                                                    <span class="badge bg-light text-secondary border px-2 py-1" style="font-family: monospace;">#PRD-<?php echo str_pad($product['id'], 5, '0', STR_PAD_LEFT); ?></span>
-                                                </td>
-                                                <td>
-                                                    <span class="price-badge">
-                                                        Rp <?php echo number_format($product['price'], 0, ",", "."); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex justify-content-center">
-                                                        <!-- tombol edit: kirim id produk ke halaman edit.php via query string -->
-                                                        <a href="edit.php?id=<?php echo htmlspecialchars($product['id']); ?>" class="btn btn-action btn-edit" title="Edit Produk">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                        </a>
-                                                        <!-- tombol delete: kirim id ke delete.php, tampilkan konfirmasi sebelum hapus -->
-                                                        <a href="delete.php?id=<?php echo htmlspecialchars($product['id']); ?>" class="btn btn-action btn-delete" title="Hapus Produk" onclick="return confirm('Yakin ingin menghapus produk ini?')">
-                                                            <i class="bi bi-trash3-fill"></i>
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php } else { ?>
-                            <div class="text-center py-5 my-5">
-                                <div class="bg-light rounded-circle d-inline-flex p-4 mb-4">
-                                    <i class="bi bi-inbox text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
-                                </div>
-                                <h4 class="text-dark fw-bold">Inventaris Masih Kosong</h4>
-                                <p class="text-muted mb-0" style="max-width: 400px; margin: 0 auto;">Belum ada data produk yang ditambahkan. Gunakan form di sebelah kiri untuk mulai menambahkan produk pertama Anda.</p>
-                            </div>
-                        <?php } ?>
-                    </div>
+            <!-- notifikasi melayang dalam bahasa inggris -->
+            <?php if (isset($_GET['success'])): ?>
+                <div class="alert alert-success alert-dismissible fade show floating-alert py-3 px-4" role="alert" id="successAlert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Success!</strong> 
+                    <?php
+                    // pilih pesan sukses bahasa inggris
+                    echo match($_GET['success']) {
+                        'added'   => 'Product added successfully!',
+                        'updated' => 'Product updated successfully!',
+                        'deleted' => 'Product deleted successfully!',
+                        'stock'   => 'Stock updated successfully!',
+                        default   => 'Action completed successfully!'
+                    };
+                    ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            </div>
+            <?php endif; ?>
 
-        </div>
-        <!-- ================= AKHIR HALAMAN DASHBOARD ================= -->
-
-        <?php elseif ($page === 'produk'): ?>
-        <!-- ================= HALAMAN KHUSUS PRODUK ================= -->
-        <div class="row pb-5 fade-in">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
-                    <h3 class="fw-bold text-dark mb-0">Manajemen Produk</h3>
-                    <a href="?page=dashboard" class="btn btn-primary d-flex align-items-center rounded-pill px-4">
-                        <i class="bi bi-plus-lg me-2"></i> Tambah Baru
-                    </a>
+            <?php if (isset($_GET['error'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show floating-alert py-3 px-4" role="alert" id="errorAlert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Error!</strong> <?php echo htmlspecialchars($_GET['error']); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-                
-                <div class="card h-100 shadow-sm border-0">
-                    <div class="card-body p-0">
-                        <?php if (count($products) > 0) { ?>
-                            <div class="table-responsive">
-                                <table class="table align-middle table-hover mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center py-3" width="5%">#</th>
-                                            <th class="py-3" width="50%">Detail Produk</th>
-                                            <th class="py-3" width="25%">Harga Jual</th>
-                                            <th class="text-center py-3" width="20%">Kelola</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $no = 1;
-                                        foreach ($products as $product) {
-                                        ?>
-                                            <tr>
-                                                <td class="text-center text-muted fw-bold"><?php echo $no++; ?></td>
-                                                <td>
-                                                    <h6 class="mb-1 fw-bold text-dark fs-6"><?php echo htmlspecialchars($product['name']); ?></h6>
-                                                    <span class="badge bg-light text-secondary border px-2 py-1" style="font-family: monospace;">#PRD-<?php echo str_pad($product['id'], 5, '0', STR_PAD_LEFT); ?></span>
-                                                </td>
-                                                <td>
-                                                    <span class="price-badge">
-                                                        Rp <?php echo number_format($product['price'], 0, ",", "."); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex justify-content-center">
-                                                        <a href="edit.php?id=<?php echo htmlspecialchars($product['id']); ?>" class="btn btn-action btn-edit" title="Edit Produk">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                        </a>
-                                                        <a href="delete.php?id=<?php echo htmlspecialchars($product['id']); ?>" class="btn btn-action btn-delete" title="Hapus Produk" onclick="return confirm('Yakin ingin menghapus produk ini?')">
-                                                            <i class="bi bi-trash3-fill"></i>
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php } else { ?>
-                            <div class="text-center py-5 my-5">
-                                <i class="bi bi-inbox text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
-                                <h4 class="text-dark fw-bold mt-3">Belum ada Produk</h4>
-                                <p class="text-muted">Klik tombol 'Tambah Baru' untuk mulai memasukkan produk ke inventaris.</p>
-                            </div>
-                        <?php } ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- ================= AKHIR HALAMAN KHUSUS PRODUK ================= -->
+            <?php endif; ?>
 
-        <?php elseif ($page === 'laporan'): ?>
-        <!-- ================= HALAMAN LAPORAN ================= -->
-        <div class="row pb-5 fade-in">
-            <div class="col-12">
-                <h3 class="fw-bold text-dark mb-4 mt-2">Laporan Ringkasan</h3>
-                
-                <div class="row g-4">
-                    <!-- Kartu Total Produk -->
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card bg-white border-0 shadow-sm h-100 p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <h6 class="text-muted fw-semibold mb-0">Total Produk</h6>
-                                <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                                    <i class="bi bi-box-seam fs-4"></i>
-                                </div>
-                            </div>
-                            <h2 class="fw-bold mb-0"><?php echo count($products); ?></h2>
-                            <span class="text-success small fw-medium mt-2"><i class="bi bi-arrow-up-right me-1"></i> Item terdaftar di sistem</span>
-                        </div>
-                    </div>
-
-                    <!-- Kartu Estimasi Total Nilai (Total Harga) -->
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card bg-white border-0 shadow-sm h-100 p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <h6 class="text-muted fw-semibold mb-0">Estimasi Nilai Aset</h6>
-                                <div class="bg-success bg-opacity-10 text-success rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                                    <i class="bi bi-cash-stack fs-4"></i>
-                                </div>
-                            </div>
-                            <?php 
-                                // hitung total harga semua produk
-                                $totalValue = 0;
-                                foreach ($products as $p) {
-                                    $totalValue += $p['price'];
-                                }
-                            ?>
-                            <h2 class="fw-bold mb-0 text-truncate" title="Rp <?php echo number_format($totalValue, 0, ',', '.'); ?>">
-                                Rp <?php echo number_format($totalValue, 0, ',', '.'); ?>
-                            </h2>
-                            <span class="text-muted small fw-medium mt-2">Total harga dari seluruh produk</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- ================= AKHIR HALAMAN LAPORAN ================= -->
-
-        <?php elseif ($page === 'profil'): ?>
-        <!-- ================= HALAMAN PROFIL ================= -->
-        <div class="row justify-content-center pb-5 fade-in">
-            <div class="col-md-8 col-lg-6">
-                <div class="card border-0 shadow-sm overflow-hidden">
-                    <div class="bg-primary bg-gradient p-5 text-center position-relative">
-                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=0f172a&color=fff&bold=true&size=120" alt="Profile" class="rounded-circle border border-4 border-white shadow mt-4 position-absolute start-50 translate-middle-x" style="bottom: -50px;">
-                    </div>
-                    <div class="card-body pt-5 mt-4 text-center px-5 pb-5">
-                        <h4 class="fw-bold text-dark mb-1">Admin User</h4>
-                        <p class="text-muted fw-medium mb-4"><i class="bi bi-shield-lock-fill text-warning me-1"></i> Administrator Sistem</p>
-                        
-                        <div class="d-grid gap-2 text-start mt-4">
-                            <div class="bg-light p-3 rounded-3 mb-2 d-flex align-items-center">
-                                <i class="bi bi-envelope-fill text-primary fs-4 me-3"></i>
-                                <div>
-                                    <small class="text-muted d-block fw-semibold">Email Aktif</small>
-                                    <span class="text-dark fw-bold">admin@gudangku.com</span>
-                                </div>
-                            </div>
-                            <div class="bg-light p-3 rounded-3 d-flex align-items-center">
-                                <i class="bi bi-telephone-fill text-success fs-4 me-3"></i>
-                                <div>
-                                    <small class="text-muted d-block fw-semibold">Nomor HP</small>
-                                    <span class="text-dark fw-bold">+62 812 3456 7890</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button class="btn btn-outline-primary fw-bold mt-4 px-4 rounded-pill"><i class="bi bi-pencil-square me-2"></i>Edit Profil</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- ================= AKHIR HALAMAN PROFIL ================= -->
-
-        <?php elseif ($page === 'pengaturan'): ?>
-        <!-- ================= HALAMAN PENGATURAN ================= -->
-        <div class="row pb-5 fade-in">
-            <div class="col-lg-8 mx-auto">
-                <h3 class="fw-bold text-dark mb-4 mt-2"><i class="bi bi-gear-fill me-2 text-secondary"></i> Pengaturan Sistem</h3>
-                <div class="card border-0 shadow-sm p-4">
-                    <h5 class="fw-bold border-bottom pb-3 mb-4 text-dark">Preferensi Aplikasi</h5>
-                    <form>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-muted">Nama Toko / Perusahaan</label>
-                            <input type="text" class="form-control form-control-lg bg-light" value="GudangKu Indonesia">
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-muted">Mata Uang Default</label>
-                            <select class="form-select form-select-lg bg-light">
-                                <option value="IDR" selected>Rupiah (IDR)</option>
-                                <option value="USD">US Dollar (USD)</option>
-                            </select>
-                        </div>
-                        <div class="mb-4 d-flex align-items-center justify-content-between p-3 bg-light rounded-3">
+            <!-- row statistik ringkasan -->
+            <div class="row g-4 mb-5">
+                <!-- total produk -->
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="fw-bold mb-1">Notifikasi Suara</h6>
-                                <small class="text-muted">Bunyikan suara saat ada aksi produk</small>
+                                <span class="text-muted fw-600 fs-7">Total Products</span>
+                                <h3 class="fw-800 mt-2 mb-0"><?php echo $totalProducts; ?></h3>
                             </div>
-                            <div class="form-check form-switch fs-4">
-                                <input class="form-check-input" type="checkbox" role="switch" checked>
+                            <div class="stat-icon">
+                                <i class="bi bi-box-seam"></i>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary px-4 py-2 fw-bold"><i class="bi bi-save2-fill me-2"></i> Simpan Perubahan</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        <!-- ================= AKHIR HALAMAN PENGATURAN ================= -->
-
-        <?php elseif ($page === 'keluar'): ?>
-        <!-- ================= HALAMAN KELUAR ================= -->
-        <div class="row justify-content-center align-items-center h-100 fade-in py-5 mt-5">
-            <div class="col-md-6 text-center">
-                <div class="bg-white p-5 rounded-4 shadow-sm border border-light">
-                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-inline-flex p-4 mb-4">
-                        <i class="bi bi-door-open-fill" style="font-size: 4rem;"></i>
                     </div>
-                    <h2 class="fw-bold text-dark mb-3">Sesi Berakhir</h2>
-                    <p class="text-muted mb-4 fs-5">Anda telah berhasil keluar dari sistem aplikasi GudangKu.</p>
-                    <a href="?page=dashboard" class="btn btn-primary btn-lg px-5 rounded-pill fw-bold shadow-sm">
-                        <i class="bi bi-box-arrow-in-right me-2"></i> Masuk Kembali
-                    </a>
+                </div>
+                <!-- nilai aset -->
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted fw-600 fs-7">Total Asset Value</span>
+                                <h3 class="fw-800 mt-2 mb-0">Rp <?php echo number_format($totalAssetValue, 0, ',', '.'); ?></h3>
+                            </div>
+                            <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.08); color: #10b981;">
+                                <i class="bi bi-currency-dollar"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- stok kritis -->
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted fw-600 fs-7">Low Stock Alert</span>
+                                <h3 class="fw-800 mt-2 mb-0" style="color: #ef4444;"><?php echo $lowStockCount; ?></h3>
+                            </div>
+                            <div class="stat-icon" style="background-color: rgba(239, 68, 68, 0.08); color: #ef4444;">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- ================= AKHIR HALAMAN KELUAR ================= -->
 
-        <?php endif; ?>
+            <!-- card tabel produk -->
+            <div class="table-container-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-800 m-0">All Products List</h5>
+                    <span class="text-muted fs-7 font-weight-bold"><?php echo $totalProducts; ?> products registered</span>
+                </div>
+
+                <?php if ($totalProducts > 0): ?>
+                    <div class="table-responsive">
+                        <!-- tabel menggunakan kelas table-striped dan table-hover sesuai slide 3 -->
+                        <table class="table table-striped table-hover custom-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">#</th>
+                                    <th>SKU</th>
+                                    <th>Product Name</th>
+                                    <th>Price</th>
+                                    <th class="text-center">Stock</th>
+                                    <th class="text-center" style="width: 150px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $no = 1;
+                                foreach ($products as $p):
+                                    // tentukan warna badge stok berdasarkan jumlah stoknya
+                                    if ($p['stock'] < 10) {
+                                        $stockColor = 'background-color: rgba(239,68,68,0.1); color: #ef4444;';
+                                    } elseif ($p['stock'] < 30) {
+                                        $stockColor = 'background-color: rgba(245,158,11,0.1); color: #f59e0b;';
+                                    } else {
+                                        $stockColor = 'background-color: rgba(16,185,129,0.1); color: #10b981;';
+                                    }
+                                ?>
+                                    <tr>
+                                        <td class="text-center text-muted fw-bold"><?php echo $no++; ?></td>
+                                        <td><span class="sku-badge"><?php echo htmlspecialchars($p['sku']); ?></span></td>
+                                        <td class="fw-semibold"><?php echo htmlspecialchars($p['product_name']); ?></td>
+                                        <td class="price-badge">Rp <?php echo number_format($p['price'], 0, ',', '.'); ?></td>
+                                        <td class="text-center">
+                                            <span class="stock-badge" style="<?php echo $stockColor; ?>">
+                                                <?php echo $p['stock']; ?> pcs
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <!-- tombol edit arahkan ke edit.php -->
+                                                <a href="edit.php?id=<?php echo $p['id']; ?>" class="action-btn btn-edit" title="Edit Product">
+                                                    <i class="bi bi-pencil-fill"></i>
+                                                </a>
+                                                <!-- tombol hapus panggil konfirmasi bahasa inggris -->
+                                                <a href="delete.php?id=<?php echo $p['id']; ?>" class="action-btn btn-delete" title="Delete Product"
+                                                   onclick="return confirm('Are you sure you want to delete this product?')">
+                                                    <i class="bi bi-trash3-fill"></i>
+                                                </a>
+                                                <!-- tombol update stok memanggil modal -->
+                                                <button type="button" class="action-btn btn-stock" title="Update Stock"
+                                                        onclick="triggerStockModal(<?php echo $p['id']; ?>, '<?php echo htmlspecialchars(addslashes($p['product_name'])); ?>', <?php echo $p['stock']; ?>)">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <!-- jika produk kosong, tampilkan info -->
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No products found</h5>
+                        <p class="text-muted fs-7">Get started by creating your first product item.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+        </div>
 
     </div>
+</div>
 
-    <!-- bootstrap js -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script>
-        // Sembunyikan alert success setelah 3 detik
-        document.addEventListener('DOMContentLoaded', function() {
-            var successAlert = document.getElementById('success-alert');
-            if (successAlert) {
-                setTimeout(function() {
-                    successAlert.style.transition = 'opacity 0.5s ease';
-                    successAlert.style.opacity = '0';
-                    setTimeout(function() {
-                        successAlert.style.display = 'none';
-                    }, 500); // Tunggu sampai transisi fade out selesai
-                }, 3000); // 3 detik sebelum mulai menghilang
-            }
-        });
-    </script>
+<!-- modal update stok -->
+<div class="modal fade" id="stockAdjustmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Stock Adjustment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- form post ke update_stok.php -->
+            <form action="update_stok.php" method="POST">
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Product Name: <strong id="modalProdName"></strong></p>
+                    <p class="mb-4">Current Stock: <span class="badge bg-dark px-3 py-2 fs-7" id="modalCurrentStock"></span></p>
+
+                    <!-- id produk yang dikirim secara tersembunyi -->
+                    <input type="hidden" name="id" id="modalProdId">
+
+                    <!-- pilihan menu tambah/kurang -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Adjustment Type</label>
+                        <select name="action" class="form-select py-2" style="border-radius: 10px;" required>
+                            <option value="tambah">Stok Masuk / Inbound (Add)</option>
+                            <option value="kurang">Stok Keluar / Outbound (Subtract)</option>
+                        </select>
+                    </div>
+
+                    <!-- input jumlah stok baru -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Quantity</label>
+                        <input type="number" name="qty" class="form-control py-2" style="border-radius: 10px;" min="1" placeholder="Enter amount" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius: 10px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4" style="border-radius: 10px;">Apply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- load bootstrap bundle javascript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // fungsi javascript untuk memunculkan modal penyesuaian stok
+    function triggerStockModal(id, name, stock) {
+        document.getElementById('modalProdId').value = id;
+        document.getElementById('modalProdName').textContent = name;
+        document.getElementById('modalCurrentStock').textContent = stock + ' pcs';
+        new bootstrap.Modal(document.getElementById('stockAdjustmentModal')).show();
+    }
+
+    // hilangkan alert setelah beberapa detik otomatis
+    const successAlert = document.getElementById('successAlert');
+    if (successAlert) {
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(successAlert);
+            bsAlert.close();
+        }, 4000);
+    }
+    const errorAlert = document.getElementById('errorAlert');
+    if (errorAlert) {
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(errorAlert);
+            bsAlert.close();
+        }, 4000);
+    }
+</script>
 </body>
-
 </html>
