@@ -9,6 +9,7 @@ $error = $_GET['error'] ?? '';
 ?>
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -51,8 +52,15 @@ $error = $_GET['error'] ?? '';
         }
 
         @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .form-header {
@@ -121,74 +129,76 @@ $error = $_GET['error'] ?? '';
         }
     </style>
 </head>
+
 <body>
 
-<div class="form-card">
-    <!-- bagian header kartu form -->
-    <div class="form-header">
-        <div class="d-flex align-items-center gap-3">
-            <div style="background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px;">
-                <i class="bi bi-box-seam fs-4"></i>
+    <div class="form-card">
+        <!-- bagian header kartu form -->
+        <div class="form-header">
+            <div class="d-flex align-items-center gap-3">
+                <div style="background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px;">
+                    <i class="bi bi-box-seam fs-4"></i>
+                </div>
+                <div>
+                    <h4 class="fw-800 m-0">Add New Product</h4>
+                    <small class="opacity-75">Create a brand new item in your inventory database</small>
+                </div>
             </div>
-            <div>
-                <h4 class="fw-800 m-0">Add New Product</h4>
-                <small class="opacity-75">Create a brand new item in your inventory database</small>
-            </div>
+        </div>
+
+        <!-- bagian isi form -->
+        <div class="form-body">
+
+            <!-- tampilkan pesan error jika ada kiriman error dari URL -->
+            <?php if ($error): ?>
+                <div class="alert alert-danger mb-4" style="border-radius: 10px;">
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- form diarahkan ke process_add.php dengan metode POST sesuai request -->
+            <form method="POST" action="process_add.php">
+
+                <!-- field sku -->
+                <div class="mb-3">
+                    <label class="form-label">SKU (Stock Keeping Unit) *</label>
+                    <input type="text" name="sku" class="form-control custom-input" placeholder="Enter SKU" required>
+                </div>
+
+                <!-- field nama produk -->
+                <div class="mb-3">
+                    <label class="form-label">Product Name *</label>
+                    <input type="text" name="product_name" class="form-control custom-input" placeholder="Enter product name" required>
+                </div>
+
+                <!-- field harga produk -->
+                <div class="mb-3">
+                    <label class="form-label">Price (Rupiah) *</label>
+                    <input type="number" name="price" class="form-control custom-input" min="0" step="0.01" placeholder="Enter product price" required>
+                </div>
+
+                <!-- field stok awal -->
+                <div class="mb-4">
+                    <label class="form-label">Initial Stock</label>
+                    <input type="number" name="stock" class="form-control custom-input" min="0" placeholder="Enter initial stock" value="0">
+                </div>
+
+                <!-- baris tombol simpan & batal -->
+                <div class="row g-3">
+                    <div class="col-6">
+                        <a href="index.php" class="btn-cancel w-100">Cancel</a>
+                    </div>
+                    <div class="col-6">
+                        <button type="submit" class="btn-submit w-100">Save Product</button>
+                    </div>
+                </div>
+
+            </form>
         </div>
     </div>
 
-    <!-- bagian isi form -->
-    <div class="form-body">
-        
-        <!-- tampilkan pesan error jika ada kiriman error dari URL -->
-        <?php if ($error): ?>
-            <div class="alert alert-danger mb-4" style="border-radius: 10px;">
-                <i class="bi bi-exclamation-octagon-fill me-2"></i>
-                <?php echo htmlspecialchars($error); ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- form diarahkan ke process_add.php dengan metode POST sesuai request -->
-        <form method="POST" action="process_add.php">
-            
-            <!-- field sku -->
-            <div class="mb-3">
-                <label class="form-label">SKU (Stock Keeping Unit) *</label>
-                <input type="text" name="sku" class="form-control custom-input" placeholder="e.g. SKU-10029" required>
-            </div>
-
-            <!-- field nama produk -->
-            <div class="mb-3">
-                <label class="form-label">Product Name *</label>
-                <input type="text" name="product_name" class="form-control custom-input" placeholder="e.g. Wireless Mouse" required>
-            </div>
-
-            <!-- field harga produk -->
-            <div class="mb-3">
-                <label class="form-label">Price (Rupiah) *</label>
-                <input type="number" name="price" class="form-control custom-input" min="0" step="0.01" placeholder="e.g. 150000" required>
-            </div>
-
-            <!-- field stok awal -->
-            <div class="mb-4">
-                <label class="form-label">Initial Stock</label>
-                <input type="number" name="stock" class="form-control custom-input" min="0" placeholder="e.g. 100" value="0">
-            </div>
-
-            <!-- baris tombol simpan & batal -->
-            <div class="row g-3">
-                <div class="col-6">
-                    <a href="index.php" class="btn-cancel w-100">Cancel</a>
-                </div>
-                <div class="col-6">
-                    <button type="submit" class="btn-submit w-100">Save Product</button>
-                </div>
-            </div>
-
-        </form>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
